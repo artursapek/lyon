@@ -1,9 +1,8 @@
-#![deny(missing_docs)]
 
 use crate::{FillOptions, Side, InternalError, TessellationResult, TessellationError, VertexSource};
+use crate::{FillGeometryBuilder, VertexId};
 use crate::geom::math::*;
 use crate::geom::LineSegment;
-use crate::geometry_builder::{FillGeometryBuilder, VertexId};
 use crate::event_queue::*;
 use crate::monotone::*;
 use crate::path::{PathEvent, FillRule, Transition, AttributeStore, EndpointId};
@@ -502,16 +501,14 @@ impl FillTessellator {
 
         self.current_position = self.events.position(current_event);
 
-        let mut vertex_ctx = VertexContext {
-            events: &self.events,
-            current_event,
-            attrib_store,
-            attrib_buffer: &mut self.attrib_buffer,
-        };
-
         self.current_vertex = output.add_fill_vertex(
             self.current_position,
-            vertex_ctx.get_attributes(),
+            FillAttributes {
+                events: &self.events,
+                current_event,
+                attrib_store,
+                attrib_buffer: &mut self.attrib_buffer,
+            },
         )?;
 
         let mut current_sibling = current_event;
@@ -1549,14 +1546,14 @@ pub(crate) fn is_near(a: Point, b: Point) -> bool {
 }
 
 ///
-pub struct VertexContext<'l> {
+pub struct FillAttributes<'l> {
     events: &'l EventQueue,
     current_event: TessEventId,
     attrib_buffer: &'l mut[f32],
     attrib_store: Option<&'l dyn AttributeStore>,
 }
 
-impl<'l> VertexContext<'l> {
+impl<'l> FillAttributes<'l> {
     /// Return an iterator over the sources of the vertex.
     pub fn sources(&self) -> VertexSourceIterator {
         VertexSourceIterator {
